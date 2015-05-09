@@ -3,14 +3,20 @@ package web
 import (
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/bgmerrell/gomsg/messages"
 )
 
 const (
+	// For posting
 	maxBodySize   = 1024
 	toUserParam   = "to"
 	fromUserParam = "from"
+	// For getting
+	userParam = "user"
+	nParam    = "n"
 )
 
 type Handler struct {
@@ -25,6 +31,24 @@ type response struct {
 
 func newResponse() *response {
 	return &response{"", http.StatusOK}
+}
+
+func (h *Handler) get(w http.ResponseWriter, r *http.Request) *response {
+	vals := r.URL.Query()
+	user := vals.Get(userParam)
+	if user == "" {
+		return &response{"no user specified", http.StatusBadRequest}
+	}
+	n, err := strconv.Atoi(vals.Get(nParam))
+	if err != nil {
+		return &response{"invalid n parameter: " + err.Error(), http.StatusBadRequest}
+	}
+	msgs, err := h.Messenger.Read(user, n)
+	msgStrs := make([]string, len(msgs))
+	for i, msg := range msgs {
+		msgStrs[i] = msg.String()
+	}
+	return &response{strings.Join(msgStrs, "\n"), http.StatusOK}
 }
 
 func (h *Handler) post(w http.ResponseWriter, r *http.Request) *response {
@@ -54,6 +78,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
 		resp = h.post(w, r)
+	case "GET":
+		resp = h.get(w, r)
 	default:
 		// HTTP/1.1 spec says we must indicate which methods we allow
 		w.Header().Set("Allow", "GET, POST")

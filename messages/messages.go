@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -12,6 +13,10 @@ type Messenger interface {
 type Message struct {
 	From string
 	Body string
+}
+
+func (m *Message) String() string {
+	return fmt.Sprintf("%s: %s", m.From, m.Body)
 }
 
 type MessageMap struct {
